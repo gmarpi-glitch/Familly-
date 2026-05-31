@@ -24,14 +24,27 @@ let session = loadSession();
 let ui = { ...initialUi };
 let watchTimer = null;
 let toastTimer = null;
+let installPrompt = null;
 
 const app = document.querySelector("#app");
 
 document.addEventListener("DOMContentLoaded", () => {
   seedDemo(false);
   if (!session && getInviteCodeFromUrl()) ui.authMode = "signup";
+  registerServiceWorker();
   render();
   startDueWatcher();
+});
+
+window.addEventListener?.("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  showToast("Family agent peut etre installe sur ce telephone.");
+});
+
+window.addEventListener?.("appinstalled", () => {
+  installPrompt = null;
+  showToast("Family agent est installe.");
 });
 
 document.addEventListener("submit", async (event) => {
@@ -48,7 +61,7 @@ document.addEventListener("submit", async (event) => {
     if (action === "appointment") handleAppointment(form);
     if (action === "reminder") handleReminder(form);
     if (action === "grocery") handleGrocery(form);
-    if (action === "profile") handleProfile(form);
+    if (action === "profile") await handleProfile(form);
   } catch (error) {
     showToast(error.message || "Action impossible.");
   }
@@ -163,6 +176,8 @@ document.addEventListener("click", async (event) => {
   }
 
   if (action === "request-notifications") requestNotifications();
+
+  if (action === "install-app") installApp();
 
   if (action === "clear-bought") {
     mutateFamily((family) => {
@@ -384,7 +399,7 @@ function renderShell() {
           </div>
           <div class="user-strip">
             <div class="user-pill">
-              <span class="avatar" style="background:${user.color}">${initials(user.name)}</span>
+              ${renderAvatar(user)}
               <span>${escapeHtml(user.name)}</span>
             </div>
             <button class="btn ghost icon-only" type="button" title="Se deconnecter" data-action="logout"><svg class="icon"><use href="#icon-log-out"></use></svg></button>
@@ -424,10 +439,17 @@ function renderBottomTab(view, icon, label) {
 function renderPersonRow(user) {
   return `
     <li class="person-row">
-      <span class="avatar" style="background:${user.color}">${initials(user.name)}</span>
+      ${renderAvatar(user)}
       <span>${escapeHtml(user.name)}</span>
     </li>
   `;
+}
+
+function renderAvatar(user, className = "avatar") {
+  if (user.photo) {
+    return `<span class="${className}" style="background:${user.color}"><img src="${escapeAttribute(user.photo)}" alt="" /></span>`;
+  }
+  return `<span class="${className}" style="background:${user.color}">${initials(user.name)}</span>`;
 }
 
 function renderCurrentView() {
@@ -1024,6 +1046,17 @@ function renderAccountView() {
         </div>
         <div class="panel-body">
           <form data-submit="profile" class="field-grid">
+            <div class="profile-photo-row">
+              ${renderAvatar(user, "avatar profile-avatar")}
+              <div class="field">
+                <label for="profile-photo">Photo de profil</label>
+                <input id="profile-photo" name="photo" type="file" accept="image/*" />
+                <label class="check-row">
+                  <input type="checkbox" name="removePhoto" value="yes" />
+                  Retirer la photo
+                </label>
+              </div>
+            </div>
             <div class="field-grid two">
               <div class="field">
                 <label for="profile-name">Prenom</label>
@@ -1041,8 +1074,28 @@ function renderAccountView() {
             <div class="form-actions">
               <button class="btn primary" type="submit"><svg class="icon"><use href="#icon-check"></use></svg>Enregistrer</button>
               <button class="btn ghost" type="button" data-action="request-notifications"><svg class="icon"><use href="#icon-bell"></use></svg>Notifications</button>
+              <button class="btn ghost" type="button" data-action="install-app"><svg class="icon"><use href="#icon-home"></use></svg>Installer</button>
             </div>
           </form>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Application mobile</h2>
+        </div>
+        <div class="panel-body">
+          <div class="app-install-card">
+            <div class="app-icon-preview">FA</div>
+            <div>
+              <strong>Family agent installable</strong>
+              <p class="hint">Le meme lien reste actif, et le telephone peut ajouter l'app sur l'ecran d'accueil.</p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn primary" type="button" data-action="install-app"><svg class="icon"><use href="#icon-home"></use></svg>Installer l'app</button>
+            <button class="btn ghost" type="button" data-action="request-notifications"><svg class="icon"><use href="#icon-bell"></use></svg>Activer les notifs</button>
+          </div>
+          <p class="hint">Les rappels navigateur peuvent s'afficher si l'app est autorisee et ouverte. Pour des notifications push garanties meme app fermee, il faudra ajouter un backend.</p>
         </div>
       </section>
       <section class="panel">
@@ -1253,11 +1306,21 @@ function handleGrocery(form) {
   showToast("Article ajoute.");
 }
 
-function handleProfile(form) {
+async function handleProfile(form) {
   const data = Object.fromEntries(new FormData(form).entries());
   const user = getCurrentUser();
+  const photoFile = form.elements.photo?.files?.[0];
   user.name = String(data.name || user.name).trim();
   user.color = data.color || user.color;
+
+  if (data.removePhoto === "yes") {
+    user.photo = "";
+  } else if (photoFile && photoFile.size > 0) {
+    if (!photoFile.type.startsWith("image/")) throw new Error("Choisissez une image.");
+    if (photoFile.size > 2 * 1024 * 1024) throw new Error("Photo trop lourde, maximum 2 Mo.");
+    user.photo = await fileToDataUrl(photoFile);
+  }
+
   saveAll();
   render();
   showToast("Profil enregistre.");
@@ -1312,7 +1375,7 @@ async function dispatchMessage(channel, message, subject) {
   if (channel === "browser") {
     await requestNotifications();
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(subject, { body: message });
+      await showDeviceNotification(subject, message);
       showToast("Notification envoyee.");
     }
     return;
@@ -1326,12 +1389,48 @@ async function requestNotifications() {
     showToast("Notifications indisponibles dans ce navigateur.");
     return;
   }
+  await registerServiceWorker();
   if (Notification.permission === "granted") {
     showToast("Notifications deja actives.");
     return;
   }
   const result = await Notification.requestPermission();
   showToast(result === "granted" ? "Notifications activees." : "Notifications refusees.");
+}
+
+async function installApp() {
+  if (installPrompt) {
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    return;
+  }
+  showToast("Sur mobile : menu du navigateur, puis Ajouter a l'ecran d'accueil.");
+}
+
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    return await navigator.serviceWorker.register("sw.js");
+  } catch {
+    return null;
+  }
+}
+
+async function showDeviceNotification(title, body) {
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.ready.catch(() => null);
+    if (registration?.showNotification) {
+      await registration.showNotification(title, {
+        body,
+        badge: "icons/icon-192.png",
+        icon: "icons/icon-192.png",
+        tag: `family-agent-${Date.now()}`,
+      });
+      return;
+    }
+  }
+  new Notification(title, { body, icon: "icons/icon-192.png" });
 }
 
 function startDueWatcher() {
@@ -1355,7 +1454,7 @@ function checkDueAlerts() {
     const startsAt = new Date(`${appointment.date}T${appointment.time || "00:00"}`);
     const alertKey = `appointment:${appointment.id}:${toDateInput(startsAt)}`;
     if (startsAt >= now && startsAt <= soon && !alerted[alertKey]) {
-      new Notification(appointment.title, { body: `A ${appointment.time}` });
+      showDeviceNotification(appointment.title, `A ${appointment.time}`);
       alerted[alertKey] = true;
       changed = true;
     }
@@ -1366,7 +1465,7 @@ function checkDueAlerts() {
     const next = nextReminderDate(reminder);
     const alertKey = `reminder:${reminder.id}:${toDateInput(next)}`;
     if (next >= now && next <= soon && !alerted[alertKey]) {
-      new Notification(reminder.title, { body: `A ${reminder.time}` });
+      showDeviceNotification(reminder.title, `A ${reminder.time}`);
       alerted[alertKey] = true;
       changed = true;
     }
@@ -1481,6 +1580,15 @@ function getCurrentUser() {
 function getCurrentFamily() {
   const user = getCurrentUser();
   return user ? state.families[user.familyId] : null;
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result));
+    reader.addEventListener("error", () => reject(new Error("Photo impossible a lire.")));
+    reader.readAsDataURL(file);
+  });
 }
 
 function getInviteCodeFromUrl() {

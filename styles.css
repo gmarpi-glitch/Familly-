@@ -414,6 +414,46 @@ button {
   font-weight: 850;
 }
 
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.profile-photo-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.profile-avatar {
+  width: 78px;
+  height: 78px;
+  font-size: 24px;
+}
+
+.check-row {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.check-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand);
+}
+
 .color-dot {
   width: 11px;
   height: 11px;
@@ -1175,6 +1215,34 @@ button {
   gap: 10px;
 }
 
+.app-install-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.app-icon-preview {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(23, 35, 34, 0.12);
+}
+
+.app-install-card strong {
+  display: block;
+  font-size: 16px;
+}
+
 .member-table {
   width: 100%;
   border-collapse: collapse;
@@ -1365,6 +1433,12 @@ button {
 
   .field-grid.two {
     grid-template-columns: 1fr;
+  }
+
+  .profile-photo-row,
+  .app-install-card {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 
   .user-pill span:not(.avatar) {

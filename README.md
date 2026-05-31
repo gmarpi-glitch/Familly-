@@ -23,7 +23,9 @@ Compte demo :
 - Rappels recurrents par jour de semaine, par exemple poubelle jaune le mercredi soir et poubelle grise le lundi soir.
 - Liste de courses partagee avec quantite, rayon, coche par membre et nettoyage des achats faits.
 - Profil personnel, couleur du membre et export JSON des donnees.
+- Modification du nom et de la photo de profil.
 - Mise en page responsive avec navigation basse sur telephone.
+- Application installable sur telephone grace au mode PWA.
 
 ## Publication GitHub Pages
 
@@ -40,3 +42,16 @@ Cette version est un prototype front-end : les donnees et les comptes restent da
 WhatsApp ne permet pas a une page web statique d'envoyer automatiquement des messages en arriere-plan. L'application prepare le message et ouvre WhatsApp avec le texte deja rempli.
 
 Le lien d'invitation pre-remplit le code famille pour les nouveaux comptes. Dans cette version statique, les donnees restent locales au navigateur ; une synchronisation reelle entre plusieurs personnes demande un backend partage.
+
+## Installation sur telephone
+
+Apres publication sur GitHub Pages, ouvrez le site sur le telephone :
+
+- Android / Chrome : menu `...`, puis `Installer l'application` ou `Ajouter a l'ecran d'accueil`.
+- iPhone / Safari : bouton partager, puis `Sur l'ecran d'accueil`.
+
+Le site reste disponible avec le meme lien GitHub Pages, mais il peut aussi s'ouvrir comme une application.
+
+## Notifications
+
+Les notifications navigateur peuvent s'afficher si l'utilisateur les autorise et si l'application est ouverte ou activee par le navigateur. Pour recevoir des notifications push fiables meme quand l'application est totalement fermee, il faudra ajouter un backend avec Web Push, Firebase ou Supabase.
