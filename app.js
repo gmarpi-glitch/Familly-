@@ -14,7 +14,7 @@ const DAYS = [
 
 const initialUi = {
   authMode: "login",
-  view: "schedule",
+  view: "wall",
   weekOffset: 0,
   sidebarOpen: false,
 };
@@ -325,6 +325,7 @@ function renderShell() {
           </div>
         </div>
         <nav class="tabs">
+          ${renderTab("wall", "icon-sparkles", "Mur")}
           ${renderTab("schedule", "icon-calendar", "Planning")}
           ${renderTab("reminders", "icon-bell", "Rappels")}
           ${renderTab("groceries", "icon-list", "Courses")}
@@ -365,6 +366,13 @@ function renderShell() {
           </div>
         </header>
         <div class="content" id="view">${renderCurrentView()}</div>
+        <nav class="bottom-nav" aria-label="Navigation mobile">
+          ${renderBottomTab("wall", "icon-sparkles", "Mur")}
+          ${renderBottomTab("schedule", "icon-calendar", "Agenda")}
+          ${renderBottomTab("reminders", "icon-bell", "Rappels")}
+          ${renderBottomTab("groceries", "icon-list", "Courses")}
+          ${renderBottomTab("account", "icon-user", "Compte")}
+        </nav>
       </main>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -379,6 +387,15 @@ function renderTab(view, icon, label) {
   `;
 }
 
+function renderBottomTab(view, icon, label) {
+  return `
+    <button class="bottom-nav-btn ${ui.view === view ? "active" : ""}" type="button" data-action="switch-view" data-view="${view}">
+      <svg class="icon"><use href="#${icon}"></use></svg>
+      <span>${label}</span>
+    </button>
+  `;
+}
+
 function renderPersonRow(user) {
   return `
     <li class="person-row">
@@ -389,10 +406,184 @@ function renderPersonRow(user) {
 }
 
 function renderCurrentView() {
+  if (ui.view === "wall") return renderWallView();
   if (ui.view === "reminders") return renderRemindersView();
   if (ui.view === "groceries") return renderGroceriesView();
   if (ui.view === "account") return renderAccountView();
   return renderScheduleView();
+}
+
+function renderWallView() {
+  const user = getCurrentUser();
+  const family = getCurrentFamily();
+  const todayKey = toDateInput(new Date());
+  const todayAppointments = [...family.appointments]
+    .filter((item) => item.date === todayKey)
+    .sort(byDateTime);
+  const dueReminders = remindersForDate(new Date()).sort((a, b) => a.time.localeCompare(b.time));
+  const openGroceries = family.groceries.filter((item) => !item.checked);
+  const nextAppointments = [...family.appointments]
+    .filter((item) => new Date(`${item.date}T${item.time || "00:00"}`) >= new Date())
+    .sort(byDateTime)
+    .slice(0, 3);
+  const focusCards = [
+    { label: "Rendez-vous", value: todayAppointments.length, tone: "mint" },
+    { label: "Rappels", value: dueReminders.length, tone: "sun" },
+    { label: "Courses", value: openGroceries.length, tone: "rose" },
+    { label: "Membres", value: getFamilyUsers(family).length, tone: "blue" },
+  ];
+
+  return `
+    <section class="wall-hero">
+      <div class="wall-hero-copy">
+        <span class="eyebrow"><svg class="icon"><use href="#icon-sparkles"></use></svg>Mur familial</span>
+        <h2>Bonjour ${escapeHtml(user.name)}, voici la maison aujourd'hui.</h2>
+        <p>${todayAppointments.length + dueReminders.length ? "La journee est organisee, les rappels importants sont devant vous." : "Journee calme pour le moment, vous pouvez ajouter un rendez-vous ou un rappel."}</p>
+        <div class="wall-actions">
+          <button class="btn primary" type="button" data-action="switch-view" data-view="schedule"><svg class="icon"><use href="#icon-plus"></use></svg>Rendez-vous</button>
+          <button class="btn ghost" type="button" data-action="switch-view" data-view="groceries"><svg class="icon"><use href="#icon-list"></use></svg>Courses</button>
+          <button class="btn ghost" type="button" data-action="share-invite"><svg class="icon"><use href="#icon-send"></use></svg>Inviter</button>
+        </div>
+      </div>
+      <div class="family-scene" aria-hidden="true">
+        <div class="scene-roof"></div>
+        <div class="scene-house">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="scene-note note-one"></div>
+        <div class="scene-note note-two"></div>
+      </div>
+    </section>
+
+    <section class="focus-grid" aria-label="Resume de la famille">
+      ${focusCards.map((card) => `
+        <article class="focus-card ${card.tone}">
+          <span>${card.label}</span>
+          <strong>${card.value}</strong>
+        </article>
+      `).join("")}
+    </section>
+
+    <div class="wall-grid">
+      <section class="panel wall-today">
+        <div class="panel-header">
+          <h2>Aujourd'hui</h2>
+          <button class="btn ghost" type="button" data-action="switch-view" data-view="schedule"><svg class="icon"><use href="#icon-calendar"></use></svg>Planning</button>
+        </div>
+        <div class="panel-body stack">
+          ${renderTodayAgenda(todayAppointments, dueReminders)}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Prochains moments</h2>
+        </div>
+        <div class="panel-body stack">
+          ${nextAppointments.length ? nextAppointments.map(renderCompactAppointment).join("") : `<div class="empty-state">Aucun rendez-vous a venir</div>`}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Courses rapides</h2>
+          <button class="btn ghost" type="button" data-action="switch-view" data-view="groceries"><svg class="icon"><use href="#icon-list"></use></svg>Voir</button>
+        </div>
+        <div class="panel-body stack">
+          ${openGroceries.slice(0, 5).map(renderCompactGrocery).join("") || `<div class="empty-state">La liste est vide</div>`}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Dernieres nouvelles</h2>
+        </div>
+        <div class="panel-body stack">
+          ${(family.activity || []).slice(0, 5).map(renderActivityItem).join("") || `<div class="empty-state">Aucune activite</div>`}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderTodayAgenda(appointments, reminders) {
+  const entries = [
+    ...appointments.map((item) => ({ type: "appointment", time: item.time, item })),
+    ...reminders.map((item) => ({ type: "reminder", time: item.time, item })),
+  ].sort((a, b) => a.time.localeCompare(b.time));
+
+  if (!entries.length) return `<div class="empty-state">Rien de prevu aujourd'hui</div>`;
+
+  return entries.map((entry) => {
+    if (entry.type === "appointment") return renderTimelineAppointment(entry.item);
+    return renderTimelineReminder(entry.item);
+  }).join("");
+}
+
+function renderTimelineAppointment(item) {
+  const owner = getUserById(item.ownerId) || getCurrentUser();
+  return `
+    <article class="timeline-item" style="--owner-color:${owner.color}">
+      <span class="timeline-time">${escapeHtml(item.time)}</span>
+      <div>
+        <strong>${escapeHtml(item.title)}</strong>
+        <small>${escapeHtml(owner.name)}${item.location ? ` · ${escapeHtml(item.location)}` : ""}</small>
+      </div>
+      <button class="btn ghost icon-only" type="button" title="Envoyer" data-action="send-appointment" data-id="${item.id}"><svg class="icon"><use href="#icon-send"></use></svg></button>
+    </article>
+  `;
+}
+
+function renderTimelineReminder(item) {
+  const owner = getUserById(item.ownerId) || getCurrentUser();
+  return `
+    <article class="timeline-item reminder" style="--owner-color:${owner.color}">
+      <span class="timeline-time">${escapeHtml(item.time)}</span>
+      <div>
+        <strong>${escapeHtml(item.title)}</strong>
+        <small>${escapeHtml(owner.name)} · ${channelLabel(item.channel)}</small>
+      </div>
+      <button class="btn ghost icon-only" type="button" title="Fait" data-action="done-reminder" data-id="${item.id}"><svg class="icon"><use href="#icon-check"></use></svg></button>
+    </article>
+  `;
+}
+
+function renderCompactAppointment(item) {
+  const owner = getUserById(item.ownerId) || getCurrentUser();
+  return `
+    <article class="mini-row" style="--owner-color:${owner.color}">
+      <span class="color-dot" style="background:${owner.color}"></span>
+      <div class="row-title">
+        <strong>${escapeHtml(item.title)}</strong>
+        <small>${formatShortDate(new Date(`${item.date}T00:00:00`))} · ${escapeHtml(item.time)} · ${escapeHtml(owner.name)}</small>
+      </div>
+    </article>
+  `;
+}
+
+function renderCompactGrocery(item) {
+  const addedBy = getUserById(item.addedBy);
+  return `
+    <article class="mini-row grocery-mini">
+      <svg class="icon"><use href="#icon-list"></use></svg>
+      <div class="row-title">
+        <strong>${escapeHtml(item.title)}</strong>
+        <small>${[item.quantity, item.category, addedBy ? addedBy.name : ""].filter(Boolean).map(escapeHtml).join(" · ")}</small>
+      </div>
+    </article>
+  `;
+}
+
+function renderActivityItem(item) {
+  return `
+    <article class="mini-row activity-mini">
+      <svg class="icon"><use href="#icon-message"></use></svg>
+      <div class="row-title">
+        <strong>${escapeHtml(item.text)}</strong>
+        <small>${formatLongDate(new Date(item.at))}</small>
+      </div>
+    </article>
+  `;
 }
 
 function renderScheduleView() {
@@ -1259,6 +1450,12 @@ function nextReminderDate(reminder) {
   return addDays(now, 14);
 }
 
+function remindersForDate(date) {
+  const family = getCurrentFamily();
+  if (!family) return [];
+  return family.reminders.filter((reminder) => reminder.days.includes(date.getDay()));
+}
+
 function formatShortDate(date) {
   return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short" }).format(date);
 }
@@ -1297,6 +1494,7 @@ function channelLabel(channel) {
 
 function titleForView() {
   return {
+    wall: "Mur familial",
     schedule: "Planning familial",
     reminders: "Rappels",
     groceries: "Courses partagees",

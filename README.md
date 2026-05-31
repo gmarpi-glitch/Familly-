@@ -16,11 +16,13 @@ Compte demo :
 - Connexion et creation de comptes individuels stockes dans le navigateur.
 - Famille partagee par code.
 - Lien d'invitation pour rejoindre le groupe famille.
+- Mur familial ludique avec resume du jour, prochains rendez-vous, courses rapides et activite recente.
 - Planning hebdomadaire avec proprietaire et couleur par personne.
 - Creation de rendez-vous avec rappel WhatsApp, email, copie de message ou notification navigateur.
 - Rappels recurrents par jour de semaine, par exemple poubelle jaune le mercredi soir et poubelle grise le lundi soir.
 - Liste de courses partagee avec quantite, rayon, coche par membre et nettoyage des achats faits.
 - Profil personnel, couleur du membre et export JSON des donnees.
+- Mise en page responsive avec navigation basse sur telephone.
 
 ## Publication GitHub Pages
 
