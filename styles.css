@@ -988,6 +988,102 @@ button {
   background: var(--brand);
 }
 
+.time-board {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.time-board summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.time-board summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-board summary strong {
+  min-width: 28px;
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--brand);
+  font-size: 13px;
+}
+
+.time-table {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.time-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px 104px;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.time-row.reminder-time-row {
+  grid-template-columns: minmax(0, 1fr) 116px;
+}
+
+.time-row-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.time-row-title strong,
+.time-row-title small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time-row-title small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.time-row label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.time-row select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 9px;
+  color: var(--ink);
+  background: #fff;
+}
+
 .stack {
   display: grid;
   gap: 12px;
@@ -1324,6 +1420,16 @@ button {
   .timeline-item .btn {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .time-row,
+  .time-row.reminder-time-row {
+    grid-template-columns: 1fr;
+  }
+
+  .time-row-title strong,
+  .time-row-title small {
+    white-space: normal;
   }
 }
 

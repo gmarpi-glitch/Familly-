@@ -18,6 +18,7 @@ Compte demo :
 - Lien d'invitation pour rejoindre le groupe famille.
 - Mur familial ludique avec resume du jour, prochains rendez-vous, courses rapides et activite recente.
 - Planning hebdomadaire avec proprietaire et couleur par personne.
+- Tableau deroulant pour modifier rapidement les heures des rendez-vous et des rappels.
 - Creation de rendez-vous avec rappel WhatsApp, email, copie de message ou notification navigateur.
 - Rappels recurrents par jour de semaine, par exemple poubelle jaune le mercredi soir et poubelle grise le lundi soir.
 - Liste de courses partagee avec quantite, rayon, coche par membre et nettoyage des achats faits.

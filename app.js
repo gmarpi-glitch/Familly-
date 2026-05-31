@@ -193,6 +193,31 @@ document.addEventListener("change", (event) => {
       }
     });
   }
+
+  if (target.matches("[data-action='update-appointment-time']")) {
+    const id = target.dataset.id;
+    const field = target.dataset.field;
+    mutateFamily((family) => {
+      const item = family.appointments.find((entry) => entry.id === id);
+      if (item && (field === "time" || field === "endTime")) {
+        item[field] = target.value;
+        addActivity(family, `Heure modifiee : ${item.title}`);
+      }
+    });
+    showToast("Heure du rendez-vous modifiee.");
+  }
+
+  if (target.matches("[data-action='update-reminder-time']")) {
+    const id = target.dataset.id;
+    mutateFamily((family) => {
+      const item = family.reminders.find((entry) => entry.id === id);
+      if (item) {
+        item.time = target.value;
+        addActivity(family, `Heure du rappel modifiee : ${item.title}`);
+      }
+    });
+    showToast("Heure du rappel modifiee.");
+  }
 });
 
 function render() {
@@ -617,6 +642,7 @@ function renderScheduleView() {
         </div>
         <div class="panel-body">
           ${renderAppointmentForm()}
+          ${renderAppointmentTimeBoard(appointments, weekDays)}
         </div>
       </aside>
     </div>
@@ -716,6 +742,54 @@ function renderAppointmentForm() {
   `;
 }
 
+function renderAppointmentTimeBoard(appointments, weekDays) {
+  const weekKeys = new Set(weekDays.map(toDateInput));
+  const weekAppointments = appointments.filter((item) => weekKeys.has(item.date));
+
+  return `
+    <details class="time-board">
+      <summary>
+        <span><svg class="icon"><use href="#icon-clock"></use></svg>Modifier les heures</span>
+        <strong>${weekAppointments.length}</strong>
+      </summary>
+      <div class="time-table">
+        ${
+          weekAppointments.length
+            ? weekAppointments.map(renderAppointmentTimeRow).join("")
+            : `<div class="empty-state">Aucun rendez-vous cette semaine</div>`
+        }
+      </div>
+    </details>
+  `;
+}
+
+function renderAppointmentTimeRow(item) {
+  const owner = getUserById(item.ownerId) || getCurrentUser();
+  return `
+    <div class="time-row">
+      <div class="time-row-title">
+        <span class="color-dot" style="background:${owner.color}"></span>
+        <div>
+          <strong>${escapeHtml(item.title)}</strong>
+          <small>${formatShortDate(new Date(`${item.date}T00:00:00`))} · ${escapeHtml(owner.name)}</small>
+        </div>
+      </div>
+      <label>
+        Debut
+        <select data-action="update-appointment-time" data-id="${item.id}" data-field="time">
+          ${renderTimeOptions(item.time)}
+        </select>
+      </label>
+      <label>
+        Fin
+        <select data-action="update-appointment-time" data-id="${item.id}" data-field="endTime">
+          ${renderTimeOptions(item.endTime, true)}
+        </select>
+      </label>
+    </div>
+  `;
+}
+
 function renderRemindersView() {
   const family = getCurrentFamily();
   const reminders = [...family.reminders].sort((a, b) => nextReminderDate(a) - nextReminderDate(b));
@@ -736,6 +810,7 @@ function renderRemindersView() {
         </div>
         <div class="panel-body">
           ${renderReminderForm()}
+          ${renderReminderTimeBoard(reminders)}
         </div>
       </aside>
     </div>
@@ -814,6 +889,45 @@ function renderReminderForm() {
         <button class="btn primary" type="submit"><svg class="icon"><use href="#icon-plus"></use></svg>Ajouter</button>
       </div>
     </form>
+  `;
+}
+
+function renderReminderTimeBoard(reminders) {
+  return `
+    <details class="time-board">
+      <summary>
+        <span><svg class="icon"><use href="#icon-clock"></use></svg>Horaires des rappels</span>
+        <strong>${reminders.length}</strong>
+      </summary>
+      <div class="time-table">
+        ${
+          reminders.length
+            ? reminders.map(renderReminderTimeRow).join("")
+            : `<div class="empty-state">Aucun rappel a modifier</div>`
+        }
+      </div>
+    </details>
+  `;
+}
+
+function renderReminderTimeRow(item) {
+  const owner = getUserById(item.ownerId) || getCurrentUser();
+  return `
+    <div class="time-row reminder-time-row">
+      <div class="time-row-title">
+        <span class="color-dot" style="background:${owner.color}"></span>
+        <div>
+          <strong>${escapeHtml(item.title)}</strong>
+          <small>${item.days.map(dayLabel).join(", ")} · ${escapeHtml(owner.name)}</small>
+        </div>
+      </div>
+      <label>
+        Heure
+        <select data-action="update-reminder-time" data-id="${item.id}">
+          ${renderTimeOptions(item.time)}
+        </select>
+      </label>
+    </div>
   `;
 }
 
@@ -1002,6 +1116,20 @@ function renderUserOptions() {
   return getFamilyUsers(getCurrentFamily()).map((user) => `
     <option value="${user.id}" ${user.id === getCurrentUser().id ? "selected" : ""}>${escapeHtml(user.name)}</option>
   `).join("");
+}
+
+function renderTimeOptions(selected, allowEmpty = false) {
+  const options = [];
+  if (allowEmpty) options.push(`<option value="" ${selected ? "" : "selected"}>Libre</option>`);
+
+  for (let hour = 5; hour <= 23; hour += 1) {
+    for (const minute of [0, 15, 30, 45]) {
+      const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      options.push(`<option value="${value}" ${value === selected ? "selected" : ""}>${value}</option>`);
+    }
+  }
+
+  return options.join("");
 }
 
 async function handleLogin(data) {
